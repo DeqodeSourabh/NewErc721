@@ -22,16 +22,15 @@ def mongoDb(address, fromBlock, toBlock):
     connection_url = 'mongodb+srv://sourabh:sourabh@cluster0.il3sa.mongodb.net/myFirstDatabase?retryWrites=true&w=majority'
     client = pymongo.MongoClient(connection_url)
     Database = client.get_database('myFirstDB')
-    fromToTable = Database.fromToTable
+    contractTable = Database.contractTable
     queryObject = {
-                'contractAddress': address,
-                'limitBlocks':{
+                'contract': address,
                 'from':fromBlock,
                 'to': toBlock
-                }
+                
             }
     print(address, fromBlock,toBlock)
-    fromToTable.insert_one(queryObject)
+    contractTable.insert_one(queryObject)
 
 
 
@@ -39,14 +38,14 @@ def mongoDb(address, fromBlock, toBlock):
 def holdersContract(address,block):
     web3 = Web3(Web3.WebsocketProvider(infura_url))
     web3.middleware_onion.inject(geth_poa_middleware, layer=0) 
-    abi = json.load(open('erc721.json','r'))
-    contract = web3.eth.contract(address=address,abi=abi)
+    # abi = json.load(open('erc721.json','r'))
+    # contract = web3.eth.contract(address=address,abi=abi)
     latest = web3.eth.blockNumber
     firstBlock = block
     totalResult = latest - firstBlock
     initial = firstBlock
     if totalResult >2000:
-        while totalResult>=2000:
+        while totalResult>=10000:
             fromBlock = initial
             toBlock = initial +2000
             #holdersEvent.remote(fromBlock,toBlock,contract
@@ -69,14 +68,11 @@ if __name__== "__main__":
     ray.init()
     futures=[]
     Database = client.get_database('myFirstDB')
-    SampleTable = Database.SampleTable
-    query = SampleTable.find()
-    output={}
-    i=0
+    blocksTable = Database.blocksTable
+    query = blocksTable.find()
     details =[]
     for x in query:
         details.append(x)
-    for l in details:
-        block = web3.eth.getTransactionReceipt(l['tx_hash']).blockNumber
-        futures.append(holdersContract.remote(l['contractAddress'], block))
+    for i in details:
+        futures.append(holdersContract.remote(i['contractAddress'], i['block']))
     ray.get(futures)
